@@ -116,6 +116,7 @@ def load_model(model_name_or_path, dtype=torch.float16, int8=False, reserve_memo
         max_memory=get_max_memory(),
         load_in_8bit=int8,
     )
+    print(f"Model running on device: {model.device}")
     logger.info("Finish loading in %.2f sec." % (time.time() - start_time))
 
     # Load the tokenizer

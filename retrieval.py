@@ -5,7 +5,7 @@ import os
 import time
 import pickle
 
-import numpy as np
+import numpy as np 
 import torch
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
