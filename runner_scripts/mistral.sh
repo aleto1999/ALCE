@@ -2,6 +2,7 @@
 #
 
 #SBATCH -p gpu
+#SBATCH --exclude=bcl-gpu15
 #SBATCH --gres=gpu:4
 #SBATCH --mem 128G
 #SBATCH -t 7-0:0
