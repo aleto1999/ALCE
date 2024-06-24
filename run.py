@@ -234,8 +234,7 @@ def main():
         args.max_length = 8192
     elif "llama-2" in args.model.lower() or "llama2" in args.model.lower():
         args.max_length = 4096
-    elif "mistral-7B" in args.model.lower():
-        print("Identified Mistral-7b model")
+    elif "mistral" in args.model.lower():
         args.max_length = 8192
 
     logger.info(f"Set the model max length to {args.max_length} (if not correct, check the code)")
