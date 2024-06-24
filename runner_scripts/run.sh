@@ -10,8 +10,8 @@
 #SBATCH --mail-user="alexandria.leto@intel.com"
 
 #SBATCH --job-name=llama_generation
-#SBATCH --output=llama-%j.out
-#SBATCH --error=llama-%j.err
+#SBATCH --output=logs/llama-%j.out
+#SBATCH --error=logs/llama-%j.err
 
 source activate alce
 export HUGGING_FACE_HUB_TOKEN=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
