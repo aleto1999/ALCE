@@ -10,8 +10,8 @@
 #SBATCH --mail-user="alexandria.leto@intel.com"
 
 #SBATCH --job-name=mistral_generation
-#SBATCH --output=mistral-%j.out
-#SBATCH --error=mistral-%j.err
+#SBATCH --output=logs/mistral-%j.out
+#SBATCH --error=logs/mistral-%j.err
 
 source activate alce
 export HUGGING_FACE_HUB_TOKEN=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
