@@ -1,7 +1,7 @@
 #!/bin/bash -f
 #
 
-#SBATCH -p gpu
+#SBATCH -p gpu-a
 #SBATCH --exclude=bcl-gpu15
 #SBATCH --gres=gpu:4
 #SBATCH --mem 128G
