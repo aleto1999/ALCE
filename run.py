@@ -238,7 +238,7 @@ def main():
         args.max_length = 4096
     elif "mistral" in args.model.lower():
         args.max_length = 8192
-    logger.info(f"Model name: {args.model.lower()}")
+
     logger.info(f"Set the model max length to {args.max_length} (if not correct, check the code)")
         
 

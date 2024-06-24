@@ -14,7 +14,6 @@
 #SBATCH --error=logs/mistral-%j.err
 
 source activate alce
-export HUGGING_FACE_HUB_TOKEN=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
 cache_path="/export/data/aleto/hf_cache_overflow/"
 export PYTHONPATH=/home/aleto/projects/ALCE/
 
