@@ -5,7 +5,7 @@ logger.setLevel(logging.INFO)
 
 import argparse
 import os
-import openai
+# import openai
 import json
 from tqdm import tqdm
 from transformers import AutoTokenizer
@@ -26,6 +26,7 @@ class LLM:
     def __init__(self, args):
         self.args = args
 
+        '''
         if args.openai_api:
             import openai 
             OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -46,7 +47,8 @@ class LLM:
             self.prompt_tokens = 0
             self.completion_tokens = 0
         else:
-            self.model, self.tokenizer = load_model(args.model)
+        '''
+        self.model, self.tokenizer = load_model(args.model)
         
         self.prompt_exceed_max_length = 0
         self.fewer_than_50 = 0
