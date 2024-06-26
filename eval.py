@@ -25,6 +25,9 @@ from transformers import (
 
 from utils import normalize_answer, get_max_memory, remove_citations
 
+import nltk
+nltk.download('punkt')
+
 QA_MODEL="gaotianyu1350/roberta-large-squad"
 AUTOAIS_MODEL="google/t5_xxl_true_nli_mixture"
 
