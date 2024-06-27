@@ -289,7 +289,8 @@ def compute_claims(data):
             AUTOAIS_MODEL,
             torch_dtype=torch.bfloat16,
             max_memory=get_max_memory(),
-            device_map="auto",
+            # device_map="auto",
+            device=0,
             offload_folder="/home/aleto/projects/alce/offload/"
         )
         autoais_tokenizer = AutoTokenizer.from_pretrained(AUTOAIS_MODEL, use_fast=False)
