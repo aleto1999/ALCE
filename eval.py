@@ -530,8 +530,8 @@ def main():
         result.update(compute_qampari_f1(normalized_data, cot=args.cot))
     if not args.no_rouge:
         result['rougeLsum'] = compute_rouge(normalized_data)
-    if args.qa:
-        result.update(compute_qa(normalized_data))
+    # if args.qa:
+    #     result.update(compute_qa(normalized_data))
     if args.mauve:
         result['mauve'] = compute_mauve(normalized_data)
     if args.citations: 
