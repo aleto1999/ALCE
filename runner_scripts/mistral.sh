@@ -13,7 +13,7 @@
 #SBATCH --output=logs/mistral-%j.out
 #SBATCH --error=logs/mistral-%j.err
 
-source activate alce
+source activate ragged
 cache_path="/export/data/aleto/hf_cache_overflow/"
 export PYTHONPATH=/home/aleto/projects/ALCE/
 

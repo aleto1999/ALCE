@@ -1,10 +1,10 @@
 #!/bin/bash -f
 #
 
-#SBATCH -p gpu-a
+#SBATCH -p gpu
 #SBATCH --exclude=bcl-gpu15
 #SBATCH --gres=gpu:2
-#SBATCH --mem 256G
+#SBATCH --mem 128G
 #SBATCH -t 7-0:0
 #SBATCH --mail-type="ALL"
 #SBATCH --mail-user="alexandria.leto@intel.com"

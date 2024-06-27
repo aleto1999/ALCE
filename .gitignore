@@ -162,8 +162,9 @@ cython_debug/
 data/
 result
 *.tar
-output/
+output/*
 *.out
 *.err
 *.pkl
 logs/
+offload/*
