@@ -236,6 +236,8 @@ def main():
         args.max_length = 8192
     elif "llama-2" in args.model.lower() or "llama2" in args.model.lower():
         args.max_length = 4096
+    elif "llama-3" in args.model.lower() or "llama3" in args.model.lower():
+        args.max_length = 8000
     elif "mistral" in args.model.lower():
         args.max_length = 8192
 

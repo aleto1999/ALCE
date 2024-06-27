@@ -34,6 +34,12 @@ AUTOAIS_MODEL="google/t5_xxl_true_nli_mixture"
 global autoais_model, autoais_tokenizer
 autoais_model, autoais_tokenizer = None, None
 
+def gpu_cleanup(pipeline):
+    """Clean pipeline from memory between evals so there aren't memory issues"""
+    del pipeline
+    gc.collect()
+    torch.cuda.empty_cache()
+
 
 def compute_f1(a_gold, a_pred):
     """Compute F1 score between two strings."""
@@ -235,9 +241,7 @@ def compute_qa(data):
         bins.append(loc_em == loc_counter)
     logger.info("QA accuracy complete")
     
-    del qa_pipeline
-    gc.collect()
-    torch.cuda.empty_cache()
+    gpu_cleanup(qa_pipeline)
 
     return {
         'QA-EM': 100 * np.mean(em),
@@ -259,7 +263,12 @@ def compute_mauve(data):
         human_data.append(' '.join((item['question'] + " " + item['answer'].strip()).split()[:100]).rstrip(string.punctuation))
         model_data.append(' '.join((item['question'] + " " + item['output'].strip()).split()[:100]).rstrip(string.punctuation))
 
-    import mauve
+    # import mauve
+
+    # use hf for mauve 
+    from evaluate import load
+    mauve = load('mauve')
+
     out = mauve.compute_mauve(
         p_text=human_data,
         q_text=model_data,
@@ -269,6 +278,7 @@ def compute_mauve(data):
         batch_size=8,
         featurize_model_name="gpt2-large"
     )
+
     return out.mauve * 100
 
 
@@ -310,6 +320,7 @@ def compute_claims(data):
         for claim in claims:
             entail += _run_nli_autoais(normalized_output, claim)
         scores.append(entail / len(claims))
+
     return 100 * np.mean(scores)
 
 
