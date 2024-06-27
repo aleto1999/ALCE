@@ -134,7 +134,7 @@ class LLM:
             inputs = self.tokenizer([prompt], return_tensors="pt").to(self.model.device)
             stop = [] if stop is None else stop
             stop = list(set(stop + ["\n", "Ċ", "ĊĊ", "<0x0A>"])) # In Llama \n is <0x0A>; In OPT \n is Ċ
-            stop_token_ids = list(set([self.tokenizer._convert_token_to_ids(stop_token) for stop_token in stop] + [self.model.config.eos_token_id]))
+            stop_token_ids = list(set([self.tokenizer.convert_token_to_ids(stop_token) for stop_token in stop] + [self.model.config.eos_token_id]))
             if "llama" in args.model.lower():
                 stop_token_ids.remove(self.tokenizer.unk_token_id)
             outputs = self.model.generate(
