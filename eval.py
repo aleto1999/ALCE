@@ -232,7 +232,7 @@ def compute_qa(data):
         em.append(loc_em / loc_counter)
         f1.append(loc_f1 / loc_counter)
         bins.append(loc_em == loc_counter)
-
+    logger.info("QA accuracy complete")
     return {
         'QA-EM': 100 * np.mean(em),
         'QA-F1': 100 * np.mean(f1),
