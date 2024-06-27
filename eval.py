@@ -209,7 +209,7 @@ def compute_qa(data):
 
     # Load model
     logger.info("Loading the RoBERTa-large SQuAD model for QA-based accuracy...")
-    qa_pipeline = pipeline("question-answering", model=QA_MODEL, device=0)
+    qa_pipeline = pipeline("question-answering", model=QA_MODEL, device=0, offload_folder="/home/aleto/projects/alce/offload/")
     logger.info(f"Done; loaded onto {qa_pipeline.model.device}")
 
     # Get prediction
