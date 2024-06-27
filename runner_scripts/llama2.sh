@@ -13,9 +13,9 @@
 #SBATCH --output=logs/llama2-%j.out
 #SBATCH --error=logs/llama2-%j.err
 
-source activate alce
+source activate ragged
 cache_path="/export/data/aleto/hf_cache_overflow/"
 export PYTHONPATH=/home/aleto/projects/ALCE/
 
 
-python run.py --config configs/asqa_llama2_shot2_ndoc5_gtr_default.yaml
+python run.py --config configs/configs/qampari_llama2_shot2_ndoc5_gtr_default.yaml
