@@ -5,6 +5,7 @@ import re
 import string
 import torch
 import copy
+import gc
 
 from nltk import sent_tokenize
 import numpy as np
@@ -233,6 +234,11 @@ def compute_qa(data):
         f1.append(loc_f1 / loc_counter)
         bins.append(loc_em == loc_counter)
     logger.info("QA accuracy complete")
+    
+    del qa_pipeline
+    gc.collect()
+    torch.cuda.empty_cache()
+
     return {
         'QA-EM': 100 * np.mean(em),
         'QA-F1': 100 * np.mean(f1),
@@ -530,8 +536,8 @@ def main():
         result.update(compute_qampari_f1(normalized_data, cot=args.cot))
     if not args.no_rouge:
         result['rougeLsum'] = compute_rouge(normalized_data)
-    # if args.qa:
-    #     result.update(compute_qa(normalized_data))
+    if args.qa:
+        result.update(compute_qa(normalized_data))
     if args.mauve:
         result['mauve'] = compute_mauve(normalized_data)
     if args.citations: 
