@@ -24,7 +24,6 @@ from transformers import (
 )
 
 from utils import normalize_answer, get_max_memory, remove_citations
-
 import nltk
 nltk.download('punkt')
 
@@ -211,7 +210,7 @@ def compute_qa(data):
     # Load model
     logger.info("Loading the RoBERTa-large SQuAD model for QA-based accuracy...")
     qa_pipeline = pipeline("question-answering", model=QA_MODEL, device=0)
-    logger.info("Done")
+    logger.info(f"Done; loaded onto {qa_pipeline.model.device}")
 
     # Get prediction
     logger.info("Computing the QA-based accuracy...")
