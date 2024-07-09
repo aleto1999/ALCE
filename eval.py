@@ -263,11 +263,11 @@ def compute_mauve(data):
         human_data.append(' '.join((item['question'] + " " + item['answer'].strip()).split()[:100]).rstrip(string.punctuation))
         model_data.append(' '.join((item['question'] + " " + item['output'].strip()).split()[:100]).rstrip(string.punctuation))
 
-    # import mauve
+    import mauve
 
     # use hf for mauve 
-    from evaluate import load
-    mauve = load('mauve')
+    # from evaluate import load
+    # mauve = load('mauve')
 
     out = mauve.compute_mauve(
         p_text=human_data,
