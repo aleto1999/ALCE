@@ -97,34 +97,4 @@ def make_demo(item, prompt, ndoc=None, doc_prompt=None, instruction=None, use_sh
     return prompt
 
 
-def load_model(model_name_or_path, dtype=torch.float16, int8=False, reserve_memory=10):
-    # Load a huggingface model and tokenizer
-    # dtype: torch.float16 or torch.bfloat16
-    # int8: whether to use int8 quantization
-    # reserve_memory: how much memory to reserve for the model on each gpu (in GB)
 
-    # Load the FP16 model
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    logger.info(f"Loading {model_name_or_path} in {dtype}...")
-    if int8:
-        logger.warn("Use LLM.int8")
-    start_time = time.time()
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path,
-        device_map='auto',
-        torch_dtype=dtype,
-        max_memory=get_max_memory(),
-        load_in_8bit=int8,
-    )
-    print(f"Model running on device: {model.device}")
-    logger.info("Finish loading in %.2f sec." % (time.time() - start_time))
-
-    # Load the tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=False)
-
-    # Fix OPT bos token problem in HF
-    if "opt" in model_name_or_path:
-        tokenizer.bos_token = "<s>"
-    tokenizer.padding_side = "left"
-
-    return model, tokenizer
