@@ -17,4 +17,4 @@ source activate ragged
 cache_path="/export/data/aleto/hf_cache_overflow/"
 export PYTHONPATH=/home/aleto/projects/ALCE/
 
-python run.py --config configs/qampari_llama2_shot2_ndoc5_gtr_default.yaml --model mistralai/Mistral-7B-Instruct-v0.1
+python run.py --config configs/asqa_llama2_shot2_ndoc5_gtr_default.yaml --model mistralai/Mistral-7B-Instruct-v0.2
