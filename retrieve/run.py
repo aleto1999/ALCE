@@ -5,6 +5,7 @@ import os
 import time
 import pickle
 import logging
+import yaml
 
 import retrieval.index as index
 
@@ -25,16 +26,10 @@ import pdb
 import gc
 import glob
 import json
-import linecache
 import logging
 import pysvs
 
 from typing import Literal
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-TOPK = 100
 
 class InvalidArgument(Exception):
     """raise when user input arguments are invalid"""
@@ -44,40 +39,17 @@ class IncompleteSetup(Exception):
     """raise when user did not complete environmnet variable setup (see README and setup.sh)"""
     pass
 
-class DocDataset():
 
-    def __init__(self, name: str, path:str=None): 
-        self.name = name.lower()
-        self.path = path
-        self.docs = None
-        self.load_data()
-
-    def load_data(self):
-        if self.name == "dpr_wiki":
-            DPR_WIKI_TSV = os.environ.get("DPR_WIKI_TSV")
-            docs = []
-            print("loading wikipedia file...")
-            with open(DPR_WIKI_TSV) as f:
-                reader = csv.reader(f, delimiter="\t")
-                for i, row in enumerate(reader):
-                    if i == 0:
-                        continue
-                    docs.append(row[2] + "\n" + row[1])
-            self.docs = docs
-        elif self.name == "qampari":
-            self.path = ""  # path to tsv
-
-        else:
-            print(f"not loading data in doc dataset class (not yet implemented for {self.name})")
-
-
-def bm25_sphere_retrieval(data):
+def bm25_sphere_retrieval(
+    data,
+    logger
+):
     from pyserini.search import LuceneSearcher
     index_path = os.environ.get("BM25_SPHERE_PATH")
-    print("loading bm25 index, this may take a while...")
+    logger.info("loading bm25 index, this may take a while...")
     searcher = LuceneSearcher(index_path)
 
-    print("running bm25 retrieval...")
+    logger.info("running bm25 retrieval...")
     for d in tqdm(data):
         query = d["question"]
         try:
@@ -102,9 +74,14 @@ def bm25_sphere_retrieval(data):
 
     return data
 
-def gtr_wiki_retrieval(query_data, docs):
+def gtr_wiki_retrieval(
+    query_data,
+    k,
+    logger
+):
+    """"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("loading GTR encoder...")
+    logger.info("loading GTR encoder...")
     encoder = SentenceTransformer("sentence-transformers/gtr-t5-xxl", device = device)
 
     # encode all queries
@@ -116,14 +93,22 @@ def gtr_wiki_retrieval(query_data, docs):
     ## NOTE: this is for indexing a dataset w/ GPR
     ## for now, we are just downloading the indices directly
     # # the wikipedia split from DPR repo: https://github.com/facebookresearch/DPR
-    docs = docs.docs
+    DPR_WIKI_TSV = os.environ.get("DPR_WIKI_TSV")
+    docs = []
+    print("loading wikipedia file...")
+    with open(DPR_WIKI_TSV) as f:
+        reader = csv.reader(f, delimiter="\t")
+        for i, row in enumerate(reader):
+            if i == 0:
+                continue
+            docs.append(row[2] + "\n" + row[1])
 
     GTR_EMB = os.environ.get("GTR_EMB")
     if not os.path.exists(GTR_EMB):  # check if env var set
-        print("gtr embeddings not found, building...")
+        logger.info("gtr embeddings not found, building...")
         embs = index.gtr_build_index(encoder, docs)
     else:
-        print("gtr embeddings found, loading...")
+        logger.info("gtr embeddings found, loading...")
         with open(GTR_EMB, "rb") as f:
             embs = pickle.load(f)
 
@@ -131,11 +116,11 @@ def gtr_wiki_retrieval(query_data, docs):
 
     gtr_emb = torch.tensor(embs, dtype=torch.float16, device=device)
 
-    print("running GTR retrieval...")
+    logger.info("running GTR retrieval...")
     for qi, q in enumerate(tqdm(queries)):
         q = q.to(device)
         scores = torch.matmul(gtr_emb, q)
-        score, idx = torch.topk(scores, TOPK)
+        score, idx = torch.topk(scores, k)
         ret = []
         for i in range(idx.size(0)):
             title, text = docs[idx[i].item()].split("\n")
@@ -146,22 +131,36 @@ def gtr_wiki_retrieval(query_data, docs):
     return query_data
 
 
-def colbert_retrieval(query_data, dataset):
+def colbert_retrieval(
+    query_data,
+    query_dataset,
+    doc_dataset,
+    logger
+):
+    """
+    """
 
-    COLBERT_IN_PATH = os.environ.get("COLBERT_IN_PATH")
+    DATASET_PATH = os.environ.get("DATASET_PATH")
+    COLBERT_MODEL_PATH = os.environ.get("COLBERT_MODEL_PATH")
     MODEL_PATH = os.path.join(  # path to model used for indexing
-        COLBERT_IN_PATH,
+        COLBERT_MODEL_PATH,
         'colbertv2.0/'
     )
     QUERY_PATH = os.path.join(  # path to input query tsv 
-        COLBERT_IN_PATH,
-        f"{args.dataset}-queries.tsv"
+        DATASET_PATH,
+        query_dataset,
+        "queries.tsv"
+    )
+    DOC_PATH = os.path.join(
+        DATASET_PATH,
+        query_dataset,
+        "docs.tsv"
     )
 
     INDEX_PATH = os.environ.get("INDEX_PATH")
     index_ret_path = os.path.join(INDEX_PATH, 'colbert')
 
-    exp_name = 'colbert'
+    exp_name = f'colbert'
     prediction_temp_dir = ""  # TODO
 
     with Run().context(
@@ -171,24 +170,27 @@ def colbert_retrieval(query_data, dataset):
             index_root=index_ret_path,
         )
     ):
-        index_ds_path = os.path.join(index_ret_path, dataset.name)
+        # index documents in $INDEX_DIR/colbert/doc_dataset
+        index_ds_path = os.path.join(index_ret_path, doc_dataset)
         config = ColBERTConfig(
-            index_path = index_ds_path,
+            index_path=index_ds_path,
             nbits=2,
             root=prediction_temp_dir,
         )
-        logger.info(f"Config file for Colbert retrieval: {config}")
+        logger.info(f"Config for Colbert retrieval: {config}")
         
     
         logger.info("Start indexing....")
         index.colbert_build_index(
             config,
             MODEL_PATH,
-            dataset
+            doc_dataset,
+            DOC_PATH,
+            logger
         )
         logger.info("Indexing complete")
 
-        searcher = Searcher(index=dataset.name, config=config)
+        searcher = Searcher(index=doc_dataset, config=config)
         
         logger.info(f"Loading queries from: {QUERY_PATH}")
         queries = Queries(QUERY_PATH)
@@ -217,23 +219,36 @@ def colbert_retrieval(query_data, dataset):
     return query_data
 
 
-def svs_retrieval(query_data, embedding_name, index_fn, logger):
+def svs_retrieval(
+    query_data: dict,
+    k: int,
+    dataset: str,
+    embed_file: str,
+    embed_model_name: str,
+    embed_model_type: str,
+    index_fn,
+    dist_type,
+    index_kwargs,
+    logger
+):
 
     """
     Evaluates SVS retriever, assuming the corpus of vector embeddings have already been created
     """
-    index_path = f'{args.corpus_dir}/index-{args.exp_name}'
+
     INDEX_PATH = os.environ.get("INDEX_PATH")
-    index_path = os.path.join(INDEX_PATH, 'svs')
+    index_path = os.path.join(INDEX_PATH, 'svs', dataset)  # how to save these?
 
     VEC_PATH = os.environ.get("VEC_PATH")
-    vec_file = os.path.join(VEC_PATH, embedding_name)
+    vec_file = os.path.join(VEC_PATH, embed_file)
 
     logger.info('Start indexing...')
     index.svs_build_index(
         index_path,
         vec_file,
         index_fn,
+        dist_type,
+        index_kwargs,
         logger
     )
     logger.info('Done indexing')
@@ -242,7 +257,7 @@ def svs_retrieval(query_data, embedding_name, index_fn, logger):
     queries = [d["question"] for d in query_data]
     if embed_model_type == 'st':
         import sentence_transformers as st
-        embed_model = st.SentenceTransformer(args.embed_model_name)
+        embed_model = st.SentenceTransformer(embed_model_name)
         query_embs = embed_model.encode(queries)
     else:
         raise NotImplementedError
@@ -259,7 +274,7 @@ def svs_retrieval(query_data, embedding_name, index_fn, logger):
     del index, vec_loader
     gc.collect() 
     
-    # TODO: wth does this do??s
+    # I really need to fix this
     cfiles = glob.glob(f'{args.corpus_dir}/{args.corpus}_jsonl/*.jsonl')
     corpus_file = cfiles[0]
     logger.info(f"Corpus is in {corpus_file}")
@@ -286,7 +301,7 @@ def svs_retrieval(query_data, embedding_name, index_fn, logger):
                 "title": "",
                 "text": wp_dicts[j]["text"],
                 "score": str(dist_neighbors[qi, j])
-            } if wp_dicts[j] else empty_dict for j in range(TOPK)
+            } if wp_dicts[j] else empty_dict for j in range(k)
         ]
         query_data[qi]['docs'] = ret
 
@@ -295,15 +310,19 @@ def svs_retrieval(query_data, embedding_name, index_fn, logger):
 
 def main(args):
 
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
     # check that index file path env variable has been set 
     INDEX_PATH = os.environ.get("INDEX_PATH")
     if not os.path.exists(INDEX_PATH):
-        print("Please set environment variable $INDEX_PATH to specify where to save or load indices.")
+        logger.info("Please set environment variable $INDEX_PATH to specify where to save or load indices.")
         raise IncompleteSetup
     
     # check that query file exists
     if not os.path.exists(args.query_data_file):
-        print(f"Query file specified does not exist: {args.query_data_file}")
+        logger.info(f"Query file specified does not exist: {args.query_data_file}")
         raise InvalidArgument
     else:
         # open specified data file (containing queries)
@@ -313,24 +332,51 @@ def main(args):
 
 
     if args.retriever == "bm25":
-        bm25_sphere_retrieval(query_data)
+        bm25_sphere_retrieval(query_data, logger)
 
     elif args.retriever == "gtr":
-        gtr_wiki_retrieval(query_data)
+        gtr_wiki_retrieval(query_data, logger)
 
     elif args.retriever == "colbert":
-        if args.dataset in ["qampari"]:
-            doc_dataset = DocDataset(
-                name=args.dataset
-            )
-        data = colbert_retrieval(query_data, doc_dataset)
+
+        if not args.query_dataset in ["nq"]:
+            logger.info(f"query dataset {args.query_dataset} not implemented for colbert")
+            raise InvalidArgument
+        if not args.doc_dataset in ["kilt_wikipedia"]:
+            logger.info(f"doc dataset {args.doc_dataset} not implemented for colbert")
+            raise InvalidArgument
+
+        data = colbert_retrieval(
+            query_data,
+            args.query_dataset,
+            args.doc_dataset,
+            logger
+        )
 
     elif args.retriever == "svs":
-        if args.dataset in ["qampari"]:
-            doc_dataset = DocDataset(
-                name=args.dataset
+        # check that all required arguments are specified
+        if not args.embed_model_type:
+            logger.info("model_type must be specified for svs")
+            raise InvalidArgument
+        if not args.embedding_name:
+            logger.info("embedding_name must be specified for svs")
+            raise InvalidArgument
+        if not args.index_fn:
+            logger.info("index_fn must be specified for svs")
+            raise InvalidArgument
+
+        data = svs_retrieval(
+            query_data,
+            args.k,
+            args.dataset,
+            args.embed_file,
+            args.embed_model_name,
+            args.embed_model_type,
+            args.index_fn,
+            args.dist_type,
+            args.index_kwargs,
+            logger
         )
-        data = svs_retrieval(query_data, doc_dataset)
 
     else:
         print(f"Invalid retriever: {args.retriever}")
@@ -343,10 +389,27 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Passage retrieval.")
-    parser.add_argument("--retriever", type=str, default=None, help="options: bm25/gtr/colbert/svs")
-    parser.add_argument("--data_file", type=str, default=None, help="path to the data file with queries")
-    parser.add_argument("--dataset", type=str, default=None, help="options:qampari/// ; required for colbert")
-    parser.add_argument("--output_file", type=str, default=None, help="same format as the data file but with the retrieved docs.")
+    parser.add_argument("--config", type=str, default=None, help="Path to the config file")
+    parser.add_argument("--k", type=int, default=100, help="Number of nearest neighbors to retrieve")
+    parser.add_argument("--retriever", type=str, required=True, help="options: bm25/gtr/colbert/svs")
+    parser.add_argument("--query_file", type=str, required=True, help="path to the data file with queries")
+    parser.add_argument("--query_dataset", type=str, required=True, help="query dataset name -> options: nq")
+    parser.add_argument("--doc_dataset", type=str, required=True, help="dataset name -> options: kilt_wikipedia/// ")
+    parser.add_argument("--output_file", type=str, default=None, help="Same format as the data file but with the retrieved docs; if not specified, will be added to the original data_file")
+ 
+    # svs arguments
+    parser.add_argument("--embed_file", default=None, help='path to .fvecs vector embedding file from $VEC_PATH')
+    parser.add_argument("--embed_model_name", default=None, help='model to use for embedding queries with SentenceTransformer (eg. "snowflake/snowflake-arctic-embed-s")')
+    parser.add_argument("--embed_model_type", default="st", help="Type of embedding model to use, choose from [st, hf]. st is SentenceTransformers and hf is HuggingFace")
+    parser.add_argument("--index_fn", default=pysvs.Flat, help='type of pysvs index')
+    parser.add_argument("--dist_type", default=pysvs.DistanceType.MIP, help='type of distance to use for index/search')
+    parser.add_argument("--index_kwargs", type=json.loads, default='{}', help='additional input arguments for index building')
+    args = parser.parse_args()
+
+    # get defaults from config file
+    config = yaml.safe_load(open(args.config)) if args.config is not None else {}
+    parser.set_defaults(**config)
+
     args = parser.parse_args()
 
     main(args)

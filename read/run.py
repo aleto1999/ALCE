@@ -13,7 +13,6 @@ import time
 import string
 import numpy as np
 import re
-from searcher import SearcherWithinDocs
 import yaml
 from utils import *
 from nltk import sent_tokenize
