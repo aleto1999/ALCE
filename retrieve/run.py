@@ -7,7 +7,7 @@ import pickle
 import logging
 import yaml
 
-import retrieval.index as index
+import retrieve.index as index
 
 import numpy as np 
 import torch
