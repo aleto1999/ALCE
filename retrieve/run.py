@@ -1,28 +1,17 @@
 import argparse
-import csv
 import json
 import os
-import time
 import pickle
 import logging
 import yaml
-
-import retrieve.index as index
-
 import numpy as np 
 import torch
+import gc
 import tqdm
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
 
-# svs
-import gc
-import glob
-import json
-import logging
-import pysvs
-
-from typing import Literal
+# import indexing functions for all retrievers
+import retrieve.index as index
 
 class InvalidArgument(Exception):
     """raise when user input arguments are invalid"""
@@ -32,105 +21,10 @@ class IncompleteSetup(Exception):
     """raise when user did not complete environmnet variable setup (see README and setup.sh)"""
     pass
 
-
-def bm25_sphere_retrieval(
-    data,
-    logger
-):
-    from pyserini.search import LuceneSearcher
-    index_path = os.environ.get("BM25_SPHERE_PATH")
-    logger.info("loading bm25 index, this may take a while...")
-    searcher = LuceneSearcher(index_path)
-
-    logger.info("running bm25 retrieval...")
-    for d in tqdm(data):
-        query = d["question"]
-        try:
-            hits = searcher.search(query, TOPK)
-        except Exception as e:
-            #https://github.com/castorini/pyserini/blob/1bc0bc11da919c20b4738fccc020eee1704369eb/scripts/kilt/anserini_retriever.py#L100
-            if "maxClauseCount" in str(e):
-                query = " ".join(query.split())[:950]
-                hits = searcher.search(query, TOPK)
-            else:
-                raise e
-
-        docs = []
-        for hit in hits:
-            h = json.loads(str(hit.docid).strip())
-            docs.append({
-                "title": h["title"],
-                "text": hit.raw,
-                "url": h["url"],
-            })
-        d["docs"] = docs
-
-    return data
-
-def gtr_wiki_retrieval(
-    query_data,
-    k,
-    logger
-):
-    """"""
-    INDEX_PATH = os.environ.get("INDEX_PATH")
-    index_path = os.path.join(INDEX_PATH, 'gtr')
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info("loading GTR encoder...")
-    encoder = SentenceTransformer("sentence-transformers/gtr-t5-xxl", device = device)
-
-    # encode all queries
-    questions = [d["question"] for d in query_data]
-    with torch.inference_mode():
-        queries = encoder.encode(questions, batch_size=4, show_progress_bar=True, normalize_embeddings=True)
-        queries = torch.tensor(queries, dtype=torch.float16, device="cpu")
-
-    ## NOTE: this is for indexing a dataset w/ GPR
-    ## for now, we are just downloading the indices directly
-    # # the wikipedia split from DPR repo: https://github.com/facebookresearch/DPR
-    DPR_WIKI_TSV = os.environ.get("DPR_WIKI_TSV")
-    docs = []
-    print("loading wikipedia file...")
-    with open(DPR_WIKI_TSV) as f:
-        reader = csv.reader(f, delimiter="\t")
-        for i, row in enumerate(reader):
-            if i == 0:
-                continue
-            docs.append(row[2] + "\n" + row[1])
-
-    GTR_EMB = os.environ.get("GTR_EMB")
-    if not os.path.exists(GTR_EMB):  # check if env var set
-        logger.info("gtr embeddings not found, building...")
-        embs = index.gtr_build_index(
-            index_path,
-            encoder,
-            docs,
-            logger
-        )
-    else:
-        logger.info("gtr embeddings found, loading...")
-        with open(GTR_EMB, "rb") as f:
-            embs = pickle.load(f)
-
-    del(encoder) # save gpu mem
-
-    gtr_emb = torch.tensor(embs, dtype=torch.float16, device=device)
-
-    logger.info("running GTR retrieval...")
-    for qi, q in enumerate(tqdm(queries)):
-        q = q.to(device)
-        scores = torch.matmul(gtr_emb, q)
-        score, idx = torch.topk(scores, k)
-        ret = []
-        for i in range(idx.size(0)):
-            title, text = docs[idx[i].item()].split("\n")
-            ret.append({"id": str(idx[i].item()+1),"title": title, "text": text, "score": score[i].item()})
-        query_data[qi]["docs"] = ret
-        q = q.to("cpu")
-
-    return query_data
-
+DATASET_PATH = os.environ.get("DATASET_PATH")
+COLBERT_MODEL_PATH = os.environ.get("COLBERT_MODEL_PATH")
+INDEX_PATH = os.environ.get("INDEX_PATH")
+VEC_PATH = os.environ.get("VEC_PATH")
 
 def colbert_retrieval(
     query_data,
@@ -145,8 +39,7 @@ def colbert_retrieval(
     from colbert.infra import Run, RunConfig, ColBERTConfig
     from colbert import Searcher
 
-    DATASET_PATH = os.environ.get("DATASET_PATH")
-    COLBERT_MODEL_PATH = os.environ.get("COLBERT_MODEL_PATH")
+
     MODEL_PATH = os.path.join(  # path to model used for indexing
         COLBERT_MODEL_PATH,
         'colbertv2.0/'
@@ -162,7 +55,6 @@ def colbert_retrieval(
         "docs.tsv"
     )
 
-    INDEX_PATH = os.environ.get("INDEX_PATH")
     index_ret_path = os.path.join(INDEX_PATH, 'colbert')
 
     exp_name = f'colbert'
@@ -223,11 +115,16 @@ def colbert_retrieval(
 
     return query_data
 
+ def bge_retrieval(
+    retriever: str  # bge-base or bge-large
+):
+    raise NotImplementedError
+
 
 def svs_retrieval(
     query_data: dict,
     k: int,
-    dataset: str,
+    doc_dataset: str,
     embed_file: str,
     embed_model_name: str,
     embed_model_type: str,
@@ -238,13 +135,10 @@ def svs_retrieval(
 ):
 
     """
-    Evaluates SVS retriever, assuming the corpus of vector embeddings have already been created
+    SVS retrieval assuming the corpus of vector embeddings have already been created
     """
 
-    INDEX_PATH = os.environ.get("INDEX_PATH")
-    index_path = os.path.join(INDEX_PATH, 'svs', dataset)  # how to save these?
-
-    VEC_PATH = os.environ.get("VEC_PATH")
+    index_path = os.path.join(INDEX_PATH, 'svs', doc_dataset)  # how to save these?
     vec_file = os.path.join(VEC_PATH, embed_file)
 
     logger.info('Start indexing...')
@@ -280,13 +174,14 @@ def svs_retrieval(
     gc.collect() 
     
     # I really need to fix this
-    cfiles = glob.glob(f'{args.corpus_dir}/{args.corpus}_jsonl/*.jsonl')
-    corpus_file = cfiles[0]
-    logger.info(f"Corpus is in {corpus_file}")
+    corpus_file = os.path.join(DATASET_PATH, doc_dataset, "docs.jsonl")
     with open(corpus_file, 'r') as f:
         clines = f.readlines()
+
     empty_dict = {
         "id": "",
+        "start_par_id": "",
+        "end_par_id": "",
         "title": "",
         "text": "",
         "score": ""
@@ -302,10 +197,13 @@ def svs_retrieval(
         ret = \
         [
             {
-                "id": -1,  # TODO
-                "title": "",
+                "id": wp_dicts[j]["id"].split("_")[0],
+                "start_par_id": wp_dicts[j]["id"].split("_")[1],
+                "end_par_id": wp_dicts[j]["id"].split("_")[1],
+                "title": None,  #fix this?
                 "text": wp_dicts[j]["text"],
                 "score": str(dist_neighbors[qi, j])
+
             } if wp_dicts[j] else empty_dict for j in range(k)
         ]
         query_data[qi]['docs'] = ret
@@ -336,13 +234,7 @@ def main(args):
             query_data = json.load(f)
 
 
-    if args.retriever == "bm25":
-        bm25_sphere_retrieval(query_data, logger)
-
-    elif args.retriever == "gtr":
-        gtr_wiki_retrieval(query_data, logger)
-
-    elif args.retriever == "colbert":
+    if args.retriever == "colbert":
 
         if not args.query_dataset in ["nq"]:
             logger.info(f"query dataset {args.query_dataset} not implemented for colbert")
@@ -357,6 +249,10 @@ def main(args):
             args.doc_dataset,
             logger
         )
+
+    elif "bge" in args.retriever: # bge-large or bge-base
+        raise NotImplementedError
+        data = bge_retrieval(args.retriever)
 
     elif args.retriever == "svs":
         # check that all required arguments are specified
@@ -385,7 +281,7 @@ def main(args):
 
     else:
         print(f"Invalid retriever: {args.retriever}")
-        print("Current implemented options include: bm25/gtr/colbert/svs")
+        print("Current implemented options include: colbert/svs")
         raise InvalidArgument
 
     with open(args.output_file, "w") as f:

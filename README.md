@@ -21,8 +21,9 @@ This repository also includes code to reproduce the baselines in our paper.
 ## Quick Links
 
   - [Requirements](#requirements)
-  - [Data](#data)
   - [Code Structure](#code-structure)
+  - [Data and Setup](#data-and-setup)
+  
   - [Reproducing Baselines](#reproducing-baselines)
   - [Evaluation](#evaluation)
   - [Human Evaluation](#human-evaluation)
@@ -34,52 +35,46 @@ This repository also includes code to reproduce the baselines in our paper.
 
 Please install the latest versions of PyTorch (`torch`), HuggingFace Transformers (`transformers`), HuggingFace Accelerate (`accelerate`), and the OpenAI API package (`openai`). This codebase is tested on 
 `torch==2.1.0.dev20230514+cu118`, `transformers==4.28.1`, `accelerate==0.17.1`, and `openai==0.27.4` with Python 3.9.7.
-
-## Data
-
-You can download datasets (along with retrieval results) by running the following command:
-
-```bash
-bash download_data.sh
-```
-
-All the data will be stored in `data/`. Our data included top-100 DPR/GTR retrieved results for ASQA and QAMPARI, and top-100 BM25 retrieved results for QAMPARI. We also provide reranked oracle retrieval results, where top-5 passages can achieve the same recall as the original top-100 recall.
-
-### Retrieval
-
-You can reproduce the passage retrieval step with the following command:
-```bash
-python retrieval.py --data {path/to/data} --retriever {bm25/gtr} --output_file {path/to/output}
-```
-
-There are additional packages required for the retrieval steps.
-Specifically, you need to install `pyserini==0.21.0`(their github [repo](https://github.com/castorini/pyserini/tree/master) is helpful) and `sentence-transformers==2.2.2`.
-
-For the BM25 retrieval over Common Crawl using Sphere, you must first download the index from the Sphere [repo](https://github.com/facebookresearch/Sphere), and set the environmental variable `BM25_SPHERE_PATH` to the path of the downloaded index.
-Specifically, you can use the following command:
-```bash
-wget -P faiss_index https://dl.fbaipublicfiles.com/sphere/sphere_sparse_index.tar.gz
-tar -xzvf faiss_index/sphere_sparse_index.tar.gz -C faiss_index
-export BM25_SPHERE_PATH=$PWD/faiss_index
-```
-It's important to note that given the large size of the corpus, this step is extremely expensive and time-consuming. We found that larger CPU memory tends to help with the speed. 
-
-
-For GTR, please download the wikipedia index with: 
-```bash
-wget https://huggingface.co/datasets/princeton-nlp/gtr-t5-xxl-wikipedia-psgs_w100-index/resolve/main/gtr_wikipedia_index.pkl
-export GTR_EMB=$PWD/gtr_wikipedia_index.pkl
-```
-
+# TODO: add to this list
 
 
 ## Code Structure
 
-* `run.py`: run file to reproduce our baseline generations.
+* `retrieve`: directory containing files for retrieval and retriever eval
+  * `configs`: config files for different retrieval settings
+  * `index.py`: index datasets before or during retrieval step
+  * `run.py`: retrieval, pass config file
 * `eval.py`: eval file to evaluate generations.
 * `prompts`: folder that contains all prompt files.
 * `configs/`: folder that contains all config files to reproduce baselines.
 * `tools/`: misc code (generate summaries/snippets, reranking, etc.)
+
+## Data and Setup
+
+You can download datasets (along with retrieval results) by running the following command:
+
+```bash
+bash setup/download_data.sh
+```
+
+All the data will be stored in `data/`.
+
+Before running any scripts, set up necessary environment variables with:
+
+```bash
+bash setup/set_paths.sh
+```
+This sets up routing for all retrieval and runner output. By default, everything will be output to `data/`, but this can be easily changed. 
+
+
+### Retrieval
+
+You can complete the retrieval step:
+```bash
+python retrieve/run.py --config `retrieve/configs/{config name}`
+```
+
+
 
 
 ## Reproducing Baselines

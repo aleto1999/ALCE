@@ -2,26 +2,6 @@ import torch
 import os
 import pickle
 
-def gtr_build_index(
-    index_path,
-    encoder,
-    doc_dataset,
-    docs,
-    logger
-):
-    """
-    Builds gtr index and dumps into a pickle in index directory
-    """
-    with torch.inference_mode():
-        embs = encoder.encode(docs, batch_size=4, show_progress_bar=True, normalize_embeddings=True)
-        embs = embs.astype("float16")
-
-    index_file = os.path.join(index_path, f"{doc_dataset}.pkl")
-    with open(index_file, "wb") as f:
-        pickle.dump(embs, f)  # do i want to stick with pickles??
-    return embs
-
-
 def colbert_build_index(
         config,
         model_dir,
