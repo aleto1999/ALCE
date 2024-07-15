@@ -2,23 +2,22 @@ import torch
 import os
 import pickle
 
-from colbert import Indexer
-import pysvs
-
-
 def gtr_build_index(
+    index_path,
     encoder,
+    doc_dataset,
     docs,
     logger
 ):
     """
+    Builds gtr index and dumps into a pickle in index directory
     """
     with torch.inference_mode():
         embs = encoder.encode(docs, batch_size=4, show_progress_bar=True, normalize_embeddings=True)
         embs = embs.astype("float16")
 
-    GTR_EMB = os.environ.get("GTR_EMB")
-    with open(GTR_EMB, "wb") as f:
+    index_file = os.path.join(index_path, f"{doc_dataset}.pkl")
+    with open(index_file, "wb") as f:
         pickle.dump(embs, f)  # do i want to stick with pickles??
     return embs
 
@@ -31,8 +30,14 @@ def colbert_build_index(
         logger
 ):
     """
+    Builds colbert index with colbertv2.0 for doc dataset
     """
-    indexer = Indexer(checkpoint=os.path.join(model_dir, 'colbertv2.0/'), config=config)
+    from colbert import Indexer
+
+    indexer = Indexer(
+        checkpoint=os.path.join(model_dir, 'colbertv2.0/'),
+        config=config
+    )
     indexer.index(
         name=doc_dataset,
         collection=doc_dataset_path,
@@ -41,15 +46,17 @@ def colbert_build_index(
 
 
 def svs_build_index(
-    index_path,
-    vec_file,
+    index_path: str,
+    vec_file: str,
     index_fn,
     dist_type,
     index_kwargs,
     logger
 ):
     """
+    Builds svs index assuming doc dataset vectors have been generated
     """
+    import pysvs
 
     try:
         # NOTE: dataloader had an error unless using the exact file path & dtype. File an issue?

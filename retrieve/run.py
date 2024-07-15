@@ -15,13 +15,6 @@ import tqdm
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 
-# for colbert
-from colbert.data import Queries
-from colbert.infra import Run, RunConfig, ColBERTConfig
-from colbert import Searcher
-from colbert import Indexer
-import pdb
-
 # svs
 import gc
 import glob
@@ -80,6 +73,9 @@ def gtr_wiki_retrieval(
     logger
 ):
     """"""
+    INDEX_PATH = os.environ.get("INDEX_PATH")
+    index_path = os.path.join(INDEX_PATH, 'gtr')
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("loading GTR encoder...")
     encoder = SentenceTransformer("sentence-transformers/gtr-t5-xxl", device = device)
@@ -106,7 +102,12 @@ def gtr_wiki_retrieval(
     GTR_EMB = os.environ.get("GTR_EMB")
     if not os.path.exists(GTR_EMB):  # check if env var set
         logger.info("gtr embeddings not found, building...")
-        embs = index.gtr_build_index(encoder, docs)
+        embs = index.gtr_build_index(
+            index_path,
+            encoder,
+            docs,
+            logger
+        )
     else:
         logger.info("gtr embeddings found, loading...")
         with open(GTR_EMB, "rb") as f:
@@ -139,6 +140,10 @@ def colbert_retrieval(
 ):
     """
     """
+
+    from colbert.data import Queries
+    from colbert.infra import Run, RunConfig, ColBERTConfig
+    from colbert import Searcher
 
     DATASET_PATH = os.environ.get("DATASET_PATH")
     COLBERT_MODEL_PATH = os.environ.get("COLBERT_MODEL_PATH")
