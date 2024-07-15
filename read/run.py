@@ -124,6 +124,7 @@ def save_results(
 
 
 def main(args):
+
     # Load config
     config = yaml.safe_load(open(args.config)) if args.config is not None else {}
     parser.set_defaults(**config)
@@ -135,15 +136,13 @@ def main(args):
 
     # Load the model
     llm = LLM(args)
-    
-    # Generate prompts
+
     np.random.seed(args.seed)
 
     # Load data
     prompt_data = json.load(open(args.prompt_file))
     eval_data = json.load(open(args.eval_file))
 
-    # Generate the demonstration part
     head_prompt = ""
     train_ids = np.random.choice(len(prompt_data["demos"]), args.shot, replace=False)
     for train_id in train_ids:
@@ -255,7 +254,7 @@ if __name__ == "__main__":
     # - question: the question
     # - answer: the answer
     # - docs: the documents, each of which contains "title", "text"
-    parser.add_argument("--eval_file", type=str, help="Path to the eval file")
+    parser.add_argument("--eval_file", type=str, help="name of eval file in $DATA_PATH containing queries and retrieved docs")
     parser.add_argument("--quick_test", type=int, default=None, help="Quickly test a few examples")
 
     # ICL setting
@@ -283,15 +282,6 @@ if __name__ == "__main__":
     # Use summarization/extraction of the documents
     parser.add_argument("--use_shorter", type=str, default=None, help="Whether to use summary data or extraction data for documents. Option: None, `summary`, `extraction`")
 
-    # # Interactive
-    # parser.add_argument("--interactive", type=bool, default=False, help="Whether to run in interactive mode")
-    # parser.add_argument("--interactive_query", type=str, default=None, help="The query to use in interactive mode, either `doc_id` (corresponding to interact in paper) or `search` (corresponding to inlinesearch in paper).")
-    # parser.add_argument("--retriever", type=str, default=None, help="When using interactive search mode, which retriever to use. Options: `tfidf`, `gtr-t5-large`")
-    # parser.add_argument("--retriever_device", type=str, default="cuda", help="Where to put the dense retriever if using. Options: `cuda`, `cpu`")
-    # parser.add_argument("--retrieve_in_all_docs", type=bool, default=False, help="Retrieve in all documents instead of just top ndoc")
-    # parser.add_argument("--max_turn", type=int, default=10, help="Max number of all actions")
-    # parser.add_argument("--max_doc_show", type=int, default=3, help="Max number of documents to show at one time.")
-    # parser.add_argument("--force_cite_show", type=bool, default=False, help="Force citing the documents that are shown to the model")
     args = parser.parse_args()
 
     main()

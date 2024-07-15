@@ -190,11 +190,13 @@ def svs_retrieval(
     for qi, q in enumerate(tqdm(queries)):
         neighbor_ids = k_neighbors[qi, :]
         try:
+            # read lines from json corresponding to neighbors
             wp_dicts = [json.loads(clines[int(n)]) if n != 0 else None for n in neighbor_ids]
         except Exception as e:
             logger.info(e)
             import pdb; pdb.set_trace()
 
+        # loop over neighbor dictionaries (pulled from json)
         ret = \
         [
             {

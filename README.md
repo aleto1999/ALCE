@@ -1,29 +1,13 @@
-# Enabling Large Language Models to Generate Text with Citations
-
-<p align="center"><img src="https://github.com/princeton-nlp/ALCE/blob/main/assets/moose.png?raw=true" alt="ALCE" width="15%"><br>*: ALCE is pronounced as /elk/ as ALCE is the Latin word for elk (Europe) or moose (North America).
-</p>
+# RAGGED and ALCE
 
 
-
-This repository contains the code and data for paper [Enabling Large Language Models to Generate Text with Citations](https://arxiv.org/abs/2305.14627). 
-In this paper, we propose ALCE, a benchmark for **A**utomatic **L**LMs' **C**itation Evaluation. 
-ALCE contains three datasets: ASQA, QAMPARI, and ELI5.
-We provide automatic evaluation code of LLM generations around three dimensions: fluency, correctness, and citation quality. 
-This repository also includes code to reproduce the baselines in our paper.
-
-
-
-<img src="https://github.com/princeton-nlp/ALCE/blob/main/assets/ALCE.png?raw=true" alt="ALCE" width="100%">
-
-
-
-
+# uh what
 ## Quick Links
 
   - [Requirements](#requirements)
   - [Code Structure](#code-structure)
   - [Data and Setup](#data-and-setup)
-  
+
   - [Reproducing Baselines](#reproducing-baselines)
   - [Evaluation](#evaluation)
   - [Human Evaluation](#human-evaluation)
@@ -39,14 +23,17 @@ Please install the latest versions of PyTorch (`torch`), HuggingFace Transformer
 
 
 ## Code Structure
-
-* `retrieve`: directory containing files for retrieval and retriever eval
+* `setup`: directory containing scripts for downloading data and setting env variables
+* `retrieve`: directory containing scripts and files for retrieval and retriever eval
   * `configs`: config files for different retrieval settings
   * `index.py`: index datasets before or during retrieval step
   * `run.py`: retrieval, pass config file
-* `eval.py`: eval file to evaluate generations.
-* `prompts`: folder that contains all prompt files.
-* `configs/`: folder that contains all config files to reproduce baselines.
+  * `eval.py`:   
+* `read`: directory containing scripts and files for generation and generation eval
+  * `configs`: config files for different generation settings
+  * `prompts`: folder that contains all prompt files.
+  * `run.py`: retrieval, pass config file
+  * `eval.py`: eval file to evaluate generations.
 * `tools/`: misc code (generate summaries/snippets, reranking, etc.)
 
 ## Data and Setup
@@ -75,6 +62,22 @@ python retrieve/run.py --config `retrieve/configs/{config name}`
 ```
 
 
+# Enabling Large Language Models to Generate Text with Citations
+
+<p align="center"><img src="https://github.com/princeton-nlp/ALCE/blob/main/assets/moose.png?raw=true" alt="ALCE" width="15%"><br>*: ALCE is pronounced as /elk/ as ALCE is the Latin word for elk (Europe) or moose (North America).
+</p>
+
+
+
+This repository contains the code and data for paper [Enabling Large Language Models to Generate Text with Citations](https://arxiv.org/abs/2305.14627). 
+In this paper, we propose ALCE, a benchmark for **A**utomatic **L**LMs' **C**itation Evaluation. 
+ALCE contains three datasets: ASQA, QAMPARI, and ELI5.
+We provide automatic evaluation code of LLM generations around three dimensions: fluency, correctness, and citation quality. 
+This repository also includes code to reproduce the baselines in our paper.
+
+
+
+<img src="https://github.com/princeton-nlp/ALCE/blob/main/assets/ALCE.png?raw=true" alt="ALCE" width="100%">
 
 
 ## Reproducing Baselines
