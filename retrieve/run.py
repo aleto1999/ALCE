@@ -33,6 +33,7 @@ def colbert_retrieval(
     logger
 ):
     """
+    Index and retrieve with ColBERT
     """
 
     from colbert.data import Queries
